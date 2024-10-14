@@ -42,7 +42,7 @@ pkg install git nodejs
 
 2. Clone o repositório do script no GitHub: No seu repositório GitHub, adicione os arquivos do script e siga este comando para clonar:
 
-git clone https://github.com/seu-usuario/seu-repositorio.git
+git clone https://github.com/Luanliaha/TSXSPMWA/tree/main
 
 📂 Isso copia o repositório para o seu ambiente local.
 
