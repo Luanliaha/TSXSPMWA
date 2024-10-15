@@ -71,7 +71,7 @@ touch files/numbers.json
 
 6. Execute o script: Agora, rode o script com o comando:
 
-node nome-do-script.js
+node index.js
 
 🚀 Agora o script está pronto para ser executado!
 
